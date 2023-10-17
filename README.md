@@ -9,50 +9,323 @@ Yudhistira akan digunakan sebagai DNS Master, Werkudara sebagai DNS Slave, Arjun
 
 ## Jawaban
 
+![topologi](https://github.com/yohanneslex/Jarkom-Modul-2-IT05-2023/assets/106576632/28dc74f3-9b52-4a0a-b285-fea98d9fdfe2)
+
+
 
 ## Soal 2
 Buatlah website utama pada node arjuna dengan akses ke arjuna.yyy.com dengan alias www.arjuna.yyy.com dengan yyy merupakan kode kelompok.
 ## Jawaban
 
+1. Install bind9  dulu pada node yudhistira
+2. buat folder jarkom pada /etc/bind/
+3. buat file for.arjuna.com pada folder jarkom
+4. lalu masukkan bash
+
+```bash
+# Untuk setting Zone
+# Create the BIND configuration for the "arjuna.it05.com" zone
+echo 'zone "arjuna.it05.com" {
+    type master;
+    allow-transfer { 10.66.3.2; };
+    file "/etc/bind/jarkom/for.arjuna.com";
+};
+
+zone "abimanyu.it05.com" {
+    type master;
+    allow-transfer { 10.66.3.2; }; // Masukan IP Water7 tanpa tanda petik
+    file "/etc/bind/jarkom/for.abimanyu.com";
+};
+
+zone "3.66.10.in-addr.arpa" {
+    type master;
+    file "/etc/bind/jarkom/rev.abimanyu.com";
+};
+' > /etc/bind/named.conf.local
+```
+
+```bash
+# Untuk Setting DNS forward ke arjuna
+echo ';
+; BIND data file for local loopback interface
+;
+$TTL    604800
+@       IN      SOA     arjuna.it05.com. root.arjuna.it05.com. (
+                            2           ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                         2419200        ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+@       IN      NS      arjuna.it05.com.
+@       IN      A       10.66.3.3
+www     IN      CNAME   arjuna.it05.com. 
+' > /etc/bind/jarkom/for.arjuna.com
+```
+
 ## Soal 3
 Dengan cara yang sama seperti soal nomor 2, buatlah website utama dengan akses ke abimanyu.yyy.com dan alias www.abimanyu.yyy.com.
 
 ## Jawaban
+buat file for.abimanyu.com pada folder jarkom lalu masukkan kode berikut ke node yudhistira lagi untuk membuat dns abimanyu
+
+```bash
+echo ';
+; BIND data file for local loopback interface
+;
+$TTL    604800
+@       IN      SOA     abimanyu.it05.com. root.abimanyu.it05.com. (
+                            2           ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                         2419200        ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+@       IN      NS      abimanyu.it05.com.
+@       IN      A       10.66.3.4
+www     IN      CNAME   abimanyu.it05.com.
+parikesit   IN  A       10.66.3.4
+ns1     IN      A       10.66.3.4
+baratayuda  IN  NS      ns1
+@       IN      AAAA    ::1
+' > /etc/bind/jarkom/for.abimanyu.com
+```
+
 
 
 ## Soal 4
 Kemudian, karena terdapat beberapa web yang harus di-deploy, buatlah subdomain parikesit.abimanyu.yyy.com yang diatur DNS-nya di Yudhistira dan mengarah ke Abimanyu.
 
 ## Jawaban
+Buat file pada folder jarkom dengan nama for.abimanyu.com sebagai forward, dan kode sama seperti sebleumnya dimana sudah menjadi 1 untuk menambahkan domain dan sub domainnya
+
+```bash
+echo ';
+; BIND data file for local loopback interface
+;
+$TTL    604800
+@       IN      SOA     abimanyu.it05.com. root.abimanyu.it05.com. (
+                            2           ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                         2419200        ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+@       IN      NS      abimanyu.it05.com.
+@       IN      A       10.66.3.4
+www     IN      CNAME   abimanyu.it05.com.
+parikesit   IN  A       10.66.3.4
+ns1     IN      A       10.66.3.4
+baratayuda  IN  NS      ns1
+@       IN      AAAA    ::1
+' > /etc/bind/jarkom/for.abimanyu.com
+```
+
 
 
 ## Soal 5
 Buat juga reverse domain untuk domain utama. (Abimanyu saja yang direverse)
 
 ## Jawaban
+Buat file pada folder jarkom dengan nama rev.abimanyu.com sebagai reverse, lalu masukkan kode berikut
+
+```bash
+echo ';
+; BIND data file for local loopback interface
+;
+$TTL    604800
+@       IN      SOA     abimanyu.it05.com. root.abimanyu.it05.com. (
+                            2           ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                         2419200        ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+3.66.10.in-addr.arpa.        IN      NS      abimanyu.it05.com.
+4                            IN      PTR     abimanyu.it05.com.
+' > /etc/bind/jarkom/rev.abimanyu.com
+```
+
+lalu masukkan bash berikut juga
+
+
+```bash
+echo "
+options {
+	directory \"/var/cache/bind\";
+
+	// If there is a firewall between you and nameservers you want
+	// to talk to, you may need to fix the firewall to allow multiple
+	// ports to talk.  See http://www.kb.cert.org/vuls/id/800113
+
+	// If your ISP provided one or more IP addresses for stable 
+	// nameservers, you probably want to use them as forwarders.  
+	// Uncomment the following block, and insert the addresses replacing 
+	// the all-0's placeholder.
+
+	forwarders {
+		192.168.122.1;
+	};
+
+	//========================================================================
+	// If BIND logs error messages about the root key being expired,
+	// you will need to update your keys.  See https://www.isc.org/bind-keys
+	//========================================================================
+	//dnssec-validation auto;
+	allow-query{any;};
+
+
+	listen-on-v6 { any; };
+};" > /etc/bind/named.conf.options
+```
 
 
 ## Soal 6
 Agar dapat tetap dihubungi ketika DNS Server Yudhistira bermasalah, buat juga Werkudara sebagai DNS Slave untuk domain utama.
 
 ## Jawaban
+1. install bind9 di node werkudara
+2. lalu masukkan bash berikut
+
+```bash
+echo 'zone "arjuna.it05.com" {
+    type slave;
+    masters { 10.66.2.2; }; // Masukan IP EniesLobby tanpa tanda petik
+    file "/var/lib/bind/arjuna.it05.com";
+};
+
+zone "abimanyu.it05.com" {
+    type slave;
+    masters { 10.66.2.2; }; // Masukan IP EniesLobby tanpa tanda petik
+    file "/var/lib/bind/abimanyu.it05.com";
+};
+
+zone "baratayuda.abimanyu.it05.com" {
+    type master;
+    file "/etc/bind/delegasi/baratayuda.abimanyu.it05.com";
+};
+
+zone "rjp.baratayuda.abimanyu.it05.com"{
+	type master;
+	file "/etc/bind/jarkom/for.rjp.com";
+};
+' > /etc/bind/named.conf.local
+```
 
 
 ## Soal 7
 Seperti yang kita tahu karena banyak sekali informasi yang harus diterima, buatlah subdomain khusus untuk perang yaitu baratayuda.abimanyu.yyy.com dengan alias www.baratayuda.abimanyu.yyy.com yang didelegasikan dari Yudhistira ke Werkudara dengan IP menuju ke Abimanyu dalam folder Baratayuda.
 
 ## Jawaban
+buat folder delegasi pada folder /etc/bind/ lalu buat file bernama baratayuda.abimanyu.it05.com lalu masukkan bash berikut
+
+```bash
+echo ';
+; BIND data file for local loopback interface
+;
+$TTL    604800
+@       IN      SOA     baratayuda.abimanyu.it05.com. root.baratayuda.abimanyu.it05.com. (
+                            2           ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                         2419200        ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+@       IN      NS      baratayuda.abimanyu.it05.com.
+@       IN      A       10.66.3.4
+www     IN      A       10.66.3.4
+' > /etc/bind/delegasi/baratayuda.abimanyu.it05.com
+```
 
 ## Soal 8
 Untuk informasi yang lebih spesifik mengenai Ranjapan Baratayuda, buatlah subdomain melalui Werkudara dengan akses rjp.baratayuda.abimanyu.yyy.com dengan alias www.rjp.baratayuda.abimanyu.yyy.com yang mengarah ke Abimanyu.
 
 ## Jawaban
+buat folder jarkom pada folder /etc/bind/ lalu buat file bernama for.rjp.com lalu masukkan bash berikut
 
+```bash
+echo ';
+; BIND data file for local loopback interface
+;
+$TTL    604800
+@       IN      SOA     rjp.baratayuda.abimanyu.it05.com. root.rjp.baratayuda.abimanyu.it05.com. (
+                            2           ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                         2419200        ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+@       IN      NS      rjp.baratayuda.abimanyu.it05.com.
+@       IN      A       10.66.3.4
+www     IN      CNAME   rjp.baratayuda.abimanyu.it05.com.
+@		IN		AAAA	::1
+' > /etc/bind/jarkom/for.rjp.com
+```
+
+lalu masukkan bash berikut juga
+
+```bash
+echo "
+options {
+	directory \"/var/cache/bind\";
+
+	// If there is a firewall between you and nameservers you want
+	// to talk to, you may need to fix the firewall to allow multiple
+	// ports to talk.  See http://www.kb.cert.org/vuls/id/800113
+
+	// If your ISP provided one or more IP addresses for stable 
+	// nameservers, you probably want to use them as forwarders.  
+	// Uncomment the following block, and insert the addresses replacing 
+	// the all-0's placeholder.
+
+	forwarders {
+		192.168.122.1;
+	};
+
+	//========================================================================
+	// If BIND logs error messages about the root key being expired,
+	// you will need to update your keys.  See https://www.isc.org/bind-keys
+	//========================================================================
+	//dnssec-validation auto;
+	allow-query{any;};
+
+
+	listen-on-v6 { any; };
+};" > /etc/bind/named.conf.options
+```
 
 ## Soal 9
 Arjuna merupakan suatu Load Balancer Nginx dengan tiga worker (yang juga menggunakan nginx sebagai webserver) yaitu Prabakusuma, Abimanyu, dan Wisanggeni. Lakukan deployment pada masing-masing worker.
 
 ## Jawaban
+1. install nginx pada node arjuna
+2. masukkan bash berikut
+```bash
+echo '
+upstream backend {
+    server 10.66.3.4:8001;
+    server 10.66.3.5:8002;
+    server 10.66.3.6:8003;
+}
+
+server {
+    listen 80;
+    
+    #root /var/www/arjuna.it05.com
+    server_name arjuna.it05.com www.arjuna.it05.com;
+
+    location / {
+        proxy_pass http://backend;
+    }
+
+    location /arjuno/{
+        alias /var/www/arjuna.it05.com;
+        index index.php;
+    }
+
+}' > /etc/nginx/sites-available/default
+```
+3. start nginx
 
 
 ## Soal 10
