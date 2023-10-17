@@ -233,9 +233,6 @@ cp -r /Jarkom-Modul-2-IT05/Resource/parikesit.abimanyu.yyy.com/parikesit.abimany
 
 mkdir /var/www/parikesit.abimanyu.IT05/secret
 
-echo " <?php echo "Hapi Hapi Hapi"; ?>" > /var/www/parikesit.abimanyu.IT05/secret/index.php
-
-
 gg='<VirtualHost *:80>
 
         ServerAdmin webmaster@localhost
